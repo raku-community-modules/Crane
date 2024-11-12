@@ -1,4 +1,5 @@
 {
+  "auth": "zef:raku-community-modules",
   "author": "atweiden",
   "build-depends": [
   ],
@@ -33,12 +34,11 @@
   "source-type": "git",
   "source-url": "https://github.com/raku-community-modules/Crane.git",
   "support": {
-    "bugtracker": "https://github.com/atweiden/crane/issues",
-    "source": "https://github.com/atweiden/crane"
   },
   "tags": [
+    "PATH"
   ],
   "test-depends": [
   ],
-  "version": "0.1.1"
+  "version": "0.1.2"
 }
