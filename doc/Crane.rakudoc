@@ -1,0 +1,915 @@
+=begin pod
+
+=head1 NAME
+
+Crane - navigate Raku containers and perform tasks
+
+=head1 SYNOPSIS
+
+=begin code :lang<raku>
+
+use Crane;
+
+my %h0;
+my %h1 = Crane.add(%h0, :path['a'], :value({:b({:c<here>})}));
+my %h2 = Crane.add(%h1, :path(qw<a b d>), :value([]));
+my %h3 = Crane.add(%h2, :path(|qw<a b d>, 0), :value<diamond>);
+my %h4 = Crane.replace(%h3, :path(|qw<a b d>, *-1), :value<dangerous>);
+my %h5 = Crane.remove(%h4, :path(qw<a b c>));
+my %h6 = Crane.move(%h5, :from(qw<a b d>), :path['d']);
+my %h7 = Crane.copy(%h6, :from(qw<a b>), :path['b']);
+my %h8 = Crane.remove(%h7, :path(qw<a b>));
+my %h9 = Crane.replace(%h8, :path['a'], :value(['alligators']));
+my %h10 = Crane.replace(%h9, :path['b'], :value(['be']));
+
+say Crane.list(%h10).raku;
+(
+    {:path(["a", 0]), :value("alligators")},
+    {:path(["b", 0]), :value("be")},
+    {:path(["d", 0]), :value("dangerous")}
+)
+
+=end code
+
+=head1 DESCRIPTION
+
+Crane aims to be for Raku containers what
+L<JSON Pointer|http://tools.ietf.org/html/rfc6901> and
+L<JSON Patch|http://tools.ietf.org/html/rfc6902> are for JSON.
+
+=head1 FEATURES
+
+=item add, remove, replace, move, copy, test operations
+=item get/set
+=item diff/patch
+=item list the contents of a nested data structure in accessible format
+
+=head1 METHODS
+
+=item .at($container,*@path)>
+=item .in($container,*@path)>
+=item .exists($container,:@path!,:$k,:$v)>
+=item .get($container,:@path!,:$k,:$v,:$p)>
+=item .set($container,:@path!,:$value!)>
+=item .add($container,:@path!,:$value!,:$in-place)>
+=item .remove($container,:@path!,:$in-place)>
+=item .replace($container,:@path!,:$value!,:$in-place)>
+=item .move($container,:@from!,:@path!,:$in-place)>
+=item .copy($container,:@from!,:@path!,:$in-place)>
+=item .test($container,:@path!,:$value!)>
+=item .list($container,:@path)>
+=item .flatten($container,:@path)>
+=item .transform($container,:@path!,:&with!,:$in-place)>
+=item .patch($container,@patch,:$in-place)>
+
+All example code assumes C<%data> has this structure:
+
+=begin code :lang<raku>
+
+my %data =
+    :legumes([
+        {
+            :instock(4),
+            :name("pinto beans"),
+            :unit("lbs")
+        },
+        {
+            :instock(21),
+            :name("lima beans"),
+            :unit("lbs")
+        },
+        {
+            :instock(13),
+            :name("black eyed peas"),
+            :unit("lbs")
+        },
+        {
+            :instock(8),
+            :name("split peas"),
+            :unit("lbs")
+        }
+    ]);
+
+=end code
+
+=head2 .at($container,*@path)
+
+Navigates to and returns container C<is rw>.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<*@path>: I<Path, optional> - a list of steps for navigating container
+
+I<returns:>
+
+=item Container at path (C<is rw>)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %inxi = :info({
+    :memory([1564.9, 32140.1]),
+    :processes(244),
+    :uptime<3:16>
+});
+
+Crane.at(%inxi, 'info')<uptime>:delete;
+Crane.at(%inxi, qw<info memory>)[0] = 31868.0;
+
+say %inxi.raku; # :info({ :memory(31868.0, 32140.1), :processes(244) })
+
+=end code
+
+=head2 .in($container,*@path)
+
+C<Crane.in> works like C<Crane.at>, except C<in> will create the structure
+of nonexisting containers based on C<@path> input instead of aborting
+the operation, e.g.
+
+=begin code :lang<raku>
+
+Crane.at(my %h, qw<a b c>) = 5 # ✗ Crane error: associative key does not exist
+Crane.in(my %i, qw<a b c>) = 5
+say %i.raku;
+{
+    :a({
+        :b({
+            :c(5)
+        })
+    })
+}
+
+=end code
+
+If C<@path> contains keys that lead to a nonexisting container, the default
+behavior is to create a Positional container there if the key is an
+C<Int >= 0> or a C<WhateverCode>. Otherwise C<in> creates an Associative
+container there, e.g.
+
+=begin code :lang<raku>
+
+my %h;
+Crane.in(%h, qw<a b>, 0, *-1) = 'here';
+say %h.raku;
+{
+    :a({
+        :b([
+            ["here"]
+        ])
+    })
+}
+
+=end code
+
+If C<@path> contains keys that lead to an existing Associative container,
+it will attempt to index the existing Associative container with the
+key regardless of the key's type (be it C<Int> or C<WhateverCode>), e.g.
+
+=begin code :lang<raku>
+
+my @a = [ :i({:want({:my<MTV>})}) ];
+Crane.in(@a, 0, 'i', 'want', 2) = 'always';
+say @a.raku;
+[
+    :i({
+        :want({
+            "2" => "always",
+            :my("MTV")
+        })
+    })
+]
+
+my @b = [ :i({:want(['my', 'MTV'])}) ];
+Crane.in(@b, 0, 'i', 'want', 2) = 'always';
+say @b.raku;
+[
+    :i({
+        :want(["my", "MTV", "always"])
+    })
+]
+
+=end code
+
+I<arguments:>
+
+=item C<$container>>: I<Container, required> - the target container
+=item C<*@path>>: I<Path, optional> - a list of steps for navigating container
+
+I<returns:>
+
+=item Container at path (C<is rw>)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %archversion = :bamboo({ :up<0.0.1>, :aur<0.0.2> });
+Crane.in(%archversion, qw<fzf up>) = '0.11.3';
+Crane.in(%archversion, qw<fzf aur>) = '0.11.3';
+say %archversion.raku;
+{
+    :bamboo({ :aur<0.0.2>, :up<0.0.1> }),
+    :fzf({ :aur<0.11.3>, :up<0.11.3> })
+}
+
+=end code
+
+=head2 .exists($container,:@path!,:$k,:$v)
+
+Determines whether a key exists in the container at the specified
+path. Works similar to the Raku Hash C<:exists>
+L<subscript adverb|https://docs.raku.org/type/Hash#%3Aexists>. Pass the
+C<:v> flag to determine whether a defined value is paired to the key at
+the specified path.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$k>: I<Bool, optional, defaults to True> - indicates whether to
+         check for an existing key at path
+=item C<:$v>: I<Bool, optional> - indicates whether to check for a defined
+         value at path
+
+I<returns:>
+
+=item C<True> if exists, otherwise C<False>
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+Passing C<:v> flag tests if C<$container.defined>. Default behavior is to
+raise an error as key operations aren't permitted on root containers.
+
+=head2 .get($container,:@path!,:$k,:$v,:$p)
+
+Gets the value from container at the specified path. The default
+behavior is to raise an error if path is nonexistent.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$k>: I<Bool, optional> - only return the key at path
+=item C<:$v>: I<Bool, optional, defaults to True> - only return the value
+         at path
+=item C<:$p>: I<Bool, optional> - return the key-value pair at path
+
+I<returns:>
+
+=item the dereferenced key, value or key-value pair
+
+I<example:>
+
+=begin code :lang<raku>
+
+my $value = Crane.get(%data, :path('legumes', 1));
+say $value.raku; # { :instock(21), :name("lima beans"), :unit("lbs") }
+
+my $value-k = Crane.get(%data, :path('legumes', 1), :k);
+say $value-k.raku; # 1
+
+my $value-p = Crane.get(%data, :path('legumes', 1), :p);
+say $value-p.raku; # 1 => { :instock(21), :name("lima beans"), :unit("lbs") }
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=item if C<:v> flag passed (the default): `return $container`
+=item if C<:k> flag passed: raise error "Sorry, not possible to request key
+operations on the container root"
+=item if C<:p> flag passed: raise error "Sorry, not possible to request key
+operations on the container root"
+
+=head2 .set($container,:@path!,:$value!)
+
+Sets the value at the specified path in the container. The default
+behavior is to create nonexistent paths (similar to C<mkdir -p>).
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$value!>: I<Any, required> - the value to be set at the specified path
+
+I<returns:>
+
+=item Modified container
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %p;
+Crane.set(%p, :path(qw<peter piper>), :value<man>);
+Crane.set(%p, :path(qw<peter pan>), :value<boy>);
+Crane.set(%p, :path(qw<peter pickle>), :value<dunno>);
+say %p.raku; # { :peter({ :pan("boy"), :pickle("dunno"), :piper("man") }) }
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=begin code :lang<raku>
+
+my $a = (1, 2, 3);
+Crane.set($a, :path(), :value<foo>);
+say $a; # foo
+
+=end code
+
+=head2 .add($container,:@path!,:$value!,:$in-place)
+
+Adds a value to the container. If C<:@path> points to an existing item
+in the container, that item's value is replaced.
+
+In the case of a C<Positional> type, the value is inserted before the
+given index. Use the relative accessor (`*-0`) instead of an index
+(C<Int>) for appending to the end of a C<Positional>.
+
+Because this operation is designed to add to existing C<Associative> types,
+its target location will often not exist. However, an C<Associative>
+type or a C<Positional> type containing it does need to exist, and it
+remains an error for that not to be the case. For example, a C<.add>
+operation with a target location of C<<a b>> starting with this Hash:
+
+=begin code :lang<raku>
+
+{ :a({ :foo(1) }) }
+
+=end code
+
+is not an error, because "a" exists, and "b" will be added to its
+value. It is an error in this Hash:
+
+=begin code :lang<raku>
+
+{ :q({ :bar(2) }) }
+
+=end code
+
+because "a" does not exist.
+
+Think of the C<.add> operation as behaving similarly to C<mkdir>, not
+C<mkdir -p>. For example, you cannot do (in shell):
+
+=begin code
+
+$ ls # empty directory
+$ mkdir a/b/c
+mkdir: cannot create directory 'a/b/c': No such file or directory
+
+=end code
+
+Without the C<-p> flag, you'd have to do:
+
+=begin code
+
+$ ls # empty directory
+$ mkdir a
+$ mkdir a/b
+$ mkdir a/b/c
+
+=end code
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$value!>: I<Any, required> - the value to be added/inserted at the
+specified path
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless C<:in-place> flag
+is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %legume = :name<carrots>, :unit<lbs>, :instock(3);
+my %data-new = Crane.add(%data, :path('legumes', 0), :value(%legume));
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=begin code :lang<raku>
+
+my @a;
+my @b = Crane.add(@a, :path([]), :value<foo>);
+say @a.raku; # []
+say @b.raku; # ["foo"]
+
+=end code
+
+=head2 .remove($container,:@path!,:$in-place)
+
+Removes the pair at path from C<Associative> types, similar to the
+Raku Hash L<C<:delete> subscript adverb|https://docs.raku.org/type/Hash#%3Adelete>.
+Splices elements out from C<Positional> types.
+
+The default behavior is to raise an error if the target location is
+nonexistent.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless C<:in-place> flag
+is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %h = :example<hello>;
+my %h2 = Crane.remove(%h, :path(['example']));
+say %h.raku; # { :example<hello> }
+say %h2.raku; # {}
+
+=end code
+
+This:
+
+=begin code :lang<raku>
+
+%h<a><b>:delete;
+
+=end code
+
+is equivalent to this:
+
+=begin code :lang<raku>
+
+Crane.remove(%h, :path(qw<a b>));
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=begin code :lang<raku>
+
+my $a = [1, 2, 3];
+my $b = Crane.remove($a, :path([])); # equivalent to `$a = Empty`
+say $a.raku; [1, 2, 3]
+say $b; # (Any)
+
+=end code
+
+=head2 .replace($container,:@path!,:$value!,:$in-place)
+
+Replaces a value. This operation is functionally identical to a C<.remove>
+operation for a value, followed immediately by a C<.add> operation at
+the same location with the replacement value.
+
+The default behavior is to raise an error if the target location is
+nonexistent.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$value!>: I<Any, required> - the value to be set at the specified path
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+C<$container> in-place
+
+I<returns:>
+
+=item  Container (original container is unmodified unless `:in-place` flag
+is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %legume = :name("green beans"), :unit<lbs>, :instock(3);
+my %data-new = Crane.replace(%data, :path('legumes', 0), :value(%legume));
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=begin code :lang<raku>
+
+my %a = :a<aaa>, :b<bbb>, :c<ccc>;
+my %b = Crane.replace(%a, :path([]), :value({ :vm<moar> }));
+say %a.raku; # { :a<aaa>, :b<bbb>, :c<ccc> }
+say %b.raku; # { :vm<moar> }
+
+=end code
+
+=head2 .move($container,:@from!,:@path!,:$in-place)
+
+Moves the source value identified by C<@from> in container to destination
+location specified by C<@path>. This operation is functionally identical
+to a C<.remove> operation on the C<@from> location, followed immediately
+by a C<.add> operation at the C<@path> location with the value that was
+just removed.
+
+The default behavior is to raise an error if the source is nonexistent.
+
+The default behavior is to raise an error if the C<@from> location is a
+proper prefix of the C<@path> location; i.e., a location cannot be moved
+into one of its children.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@from!>: I<Path, required> - a list of steps to the source
+=item C<:@path!>: I<Path, required> - a list of steps to the destination
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless `:in-place` flag
+  is passed)
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@from> or C<@path> to operate on the root of
+the container.
+
+=head2 .copy($container,:@from!,:@path!,:$in-place)
+
+Copies the source value identified by C<@from> in container to destination
+container at location specified by C<@path>. This operation is functionally
+identical to a C<.add> operation at the C<@path> location using the value
+specified in the C<@from>. As with C<.move>, a location cannot be copied
+into one of its children.
+
+The default behavior is to raise an error if the source at C<@from>
+is nonexistent.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@from!>: I<Path, required> - a list of steps to the source
+=item C<:@path!>: I<Path, required> - a list of steps to the destination
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+                C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless `:in-place` flag
+  is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %h = :example<hello>;
+my %h2 = Crane.copy(%h, :from(['example']), :path(['sample']));
+say %h.raku; # { :example("hello") }
+say %h2.raku; # { :example("hello"), :sample("hello") }
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@from> or C<@path> to operate on the root of the
+container. Has similar rules / considerations to C<.move>.
+
+=head2 .test($container,:@path!,:$value!)
+
+Tests that the specified value is set at the target location in the
+document.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps for navigating container
+=item C<:$value!>: I<Any, required> - the value expected at the specified path
+
+I<returns:>
+
+=item C<True> if expected value exists at C<@path>, otherwise C<False>
+
+I<example:>
+
+=begin code :lang<raku>
+
+say so Crane.test(%data, :path('legumes', 0, 'name'), :value("pinto beans")); # True
+
+=end code
+
+I<What about operating on the root of the container?>
+
+Pass an empty list as C<@path> to operate on the root of the container.
+
+=head2 .list($container,:@path)
+
+Lists all of the paths available in C<$container>.
+
+I<arguments:>
+
+=item C<$container` >: I<Container, required> - the target container
+=item C<:@path>: I<Path, optional> - a list of steps for navigating container
+
+I<returns:>
+
+=item List of path-value pairs
+
+I<example:>
+
+Listing a C<Hash>:
+
+=begin code :lang<raku>
+
+say Crane.list(%data);
+(
+    {
+        :path(["legumes", 0, "instock"]),
+        :value(4)
+    },
+    {
+        :path(["legumes", 0, "name"]),
+        :value("pinto beans")
+    },
+    {
+        :path(["legumes", 0, "unit"]),
+        :value("lbs")
+    },
+    {
+        :path(["legumes", 1, "instock"]),
+        :value(21)
+    },
+    {
+        :path(["legumes", 1, "name"]),
+        :value("lima beans")
+    },
+    {
+        :path(["legumes", 1, "unit"]),
+        :value("lbs")
+    },
+    {
+        :path(["legumes", 2, "instock"]),
+        :value(13)
+    },
+    {
+        :path(["legumes", 2, "name"]),
+        :value("black eyed peas")
+    },
+    {
+        :path(["legumes", 2, "unit"]),
+        :value("lbs")
+    },
+    {
+        :path(["legumes", 3, "instock"]),
+        :value(8)
+    },
+    {
+        :path(["legumes", 3, "name"]),
+        :value("split peas")
+    },
+    {
+        :path(["legumes", 3, "unit"]),
+        :value("lbs")
+    }
+)
+
+=end code
+
+Listing a C<List>:
+
+=begin code :lang<raku>
+
+my $a = qw<zero one two>;
+say Crane.list($a);
+(
+    {
+        :path([0]),
+        :value("zero")
+    },
+    {
+        :path([1]),
+        :value("one")
+    },
+    {
+        :path([2]),
+        :value("two")
+    }
+)
+
+=end code
+
+=head2 .flatten($container,:@path)
+
+Flattens a container into a single-level C<Hash> of path-value pairs.
+
+I<arguments:>
+
+=item C<$container` >: I<Container, required> - the target container
+=item C<:@path>: I<Path, optional> - a list of steps for navigating container
+
+I<returns:>
+
+=item a flattened C<Hash> of path-value pairs.
+
+I<example:>
+
+=begin code :lang<raku>
+
+say Crane.flatten(%data);
+{
+    ("legumes", 0, "instock") => 4,
+    ("legumes", 0, "name")    => "pinto beans",
+    ("legumes", 0, "unit")    => "lbs",
+    ("legumes", 1, "instock") => 21,
+    ("legumes", 1, "name")    => "lima beans",
+    ("legumes", 1, "unit")    => "lbs",
+    ("legumes", 2, "instock") => 13,
+    ("legumes", 2, "name")    => "black eyed peas",
+    ("legumes", 2, "unit")    => "lbs",
+    ("legumes", 3, "instock") => 8,
+    ("legumes", 3, "name")    => "split peas",
+    ("legumes", 3, "unit")    => "lbs"
+}
+
+=end code
+
+=head2 .transform($container,:@path!,:&with!,:$in-place)
+
+Functionally identical to a C<replace> operation with the replacement value
+being the return value of C<with> applied to the value of C<$container>
+at C<@path>.
+
+The Callable passed in C<with> must take one (optional) positional argument
+and return a value.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<:@path!>: I<Path, required> - a list of steps to the destination
+=item C<:&with!>: I<Callable, required> - instructions for changing the
+value at C<@path>
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless `:in-place` flag
+is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %market =
+    :foods({
+        :fruits([qw<blueberries marionberries>]),
+        :veggies([qw<collards onions>])
+    });
+
+my @first-fruit = |qw<foods fruits>, 0;
+my @second-veggie = |qw<foods veggies>, 1;
+
+my &oh-yeah = -> $s { $s ~ '!' };
+
+Crane.transform(%market, :path(@first-fruit), :with(&oh-yeah), :in-place);
+say so Crane.get(%market, :path(@first-fruit)) eq 'blueberries!'; # True
+
+Crane.transform(%market, :path(@second-veggie), :with(&oh-yeah), :in-place);
+say so Crane.get(%market, :path(@second-veggie)) eq 'onions!'; # True
+
+=end code
+
+=head2 .patch($container,@patch,:$in-place)
+
+Apply C<@patch>, a list of specially formatted Hashes representing
+individual 6902 operations implemented by Crane, to C<$container>.
+
+B<add>
+
+=begin code :lang<raku>
+
+{ :op("add"), :path(qw<path to target>), :value("Value") }
+
+=end code
+
+B<remove>
+
+=begin code :lang<raku>
+
+{ :op("remove"), :path(qw<path to target>) }
+
+=end code
+
+B<replace>
+
+=begin code :lang<raku>
+
+{ :op("replace"), :path(qw<path to target>), :value("Value") }
+
+=end code
+
+B<move>
+
+=begin code :lang<raku>
+
+{ :op("move"), :from(qw<path to source>), :path(qw<path to target>) }
+
+=end code
+
+B<copy>
+
+=begin code :lang<raku>
+
+{ :op("copy"), :from(qw<path to source>), :path(qw<path to target>) }
+
+=end code
+
+B<test>
+
+=begin code :lang<raku>
+
+{ :op("test"), :path(qw<path to target>), :value("Is value") }
+
+=end code
+
+If an operation is not successful, the default behavior is to raise an
+exception. If a test operation as part of the C<@patch> returns False,
+the default behavior is to raise an exception.
+
+I<arguments:>
+
+=item C<$container>: I<Container, required> - the target container
+=item C<@patch>: I<Patch, required> - a list of 6902 instructions to apply
+=item C<:$in-place>: I<Bool, optional, defaults to False> - whether to modify
+                C<$container> in-place
+
+I<returns:>
+
+=item Container (original container is unmodified unless `:in-place` flag
+is passed)
+
+I<example:>
+
+=begin code :lang<raku>
+
+my %h;
+my @patch =
+    { :op<add>, :path['a'], :value({:b({:c<here>})}) },
+    { :op<add>, :path(qw<a b d>), :value([]) },
+    { :op<add>, :path(|qw<a b d>, 0), :value<diamond> },
+    { :op<replace>, :path(|qw<a b d>, *-1), :value<dangerous> },
+    { :op<remove>, :path(qw<a b c>) },
+    { :op<move>, :from(qw<a b d>), :path['d'] },
+    { :op<copy>, :from(qw<a b>), :path['b'] },
+    { :op<remove>, :path(qw<a b>) },
+    { :op<replace>, :path['a'], :value(['alligators']) },
+    { :op<replace>, :path['b'], :value(['be']) };
+my %i = Crane.patch(%h, @patch);
+
+=end code
+
+Exception: C<42 !== 'C'>
+
+=begin code :lang<raku>
+
+my %h = :a({:b({:c})});
+my @patch =
+    { :op<replace>, :path(qw<a b c>), :value(42) },
+    { :op<test>, :path(qw<a b c>), :value<C> };
+my %i = Crane.patch(%h, @patch); # ✗ Crane error: patch operation failed, test failed
+
+=end code
+
+=head1 AUTHOR
+
+Andy Weidenbaum
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2016 - 2022 Andy Weidenbaum
+
+Copyright 2024 Raku Community
+
+This is free and unencumbered public domain software. For more
+information, see http://unlicense.org/ or the accompanying UNLICENSE file.
+
+=end pod
+
+# vim: expandtab shiftwidth=4

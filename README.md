@@ -1,18 +1,12 @@
-# Crane
+[![Actions Status](https://github.com/raku-community-modules/Crane/actions/workflows/linux.yml/badge.svg)](https://github.com/raku-community-modules/Crane/actions) [![Actions Status](https://github.com/raku-community-modules/Crane/actions/workflows/macos.yml/badge.svg)](https://github.com/raku-community-modules/Crane/actions) [![Actions Status](https://github.com/raku-community-modules/Crane/actions/workflows/windows.yml/badge.svg)](https://github.com/raku-community-modules/Crane/actions)
 
-<!-- intro {{{ -->
+NAME
+====
 
-Navigate Raku [containers](https://docs.raku.org/language/containers)
-and perform tasks.
+Crane - navigate Raku containers and perform tasks
 
-<!-- end intro }}} -->
-
-
-<!-- synopsis {{{ -->
-
-## Synopsis
-
-<!-- example code {{{ -->
+SYNOPSIS
+========
 
 ```raku
 use Crane;
@@ -29,7 +23,7 @@ my %h8 = Crane.remove(%h7, :path(qw<a b>));
 my %h9 = Crane.replace(%h8, :path['a'], :value(['alligators']));
 my %h10 = Crane.replace(%h9, :path['b'], :value(['be']));
 
-say Crane.list(%h10).perl;
+say Crane.list(%h10).raku;
 (
     {:path(["a", 0]), :value("alligators")},
     {:path(["b", 0]), :value("be")},
@@ -37,58 +31,54 @@ say Crane.list(%h10).perl;
 )
 ```
 
-<!-- end example code }}} -->
+DESCRIPTION
+===========
 
--------------------------------------------------------------------------------
+Crane aims to be for Raku containers what [JSON Pointer](http://tools.ietf.org/html/rfc6901) and [JSON Patch](http://tools.ietf.org/html/rfc6902) are for JSON.
 
-<!-- end synopsis }}} -->
+FEATURES
+========
 
+  * add, remove, replace, move, copy, test operations
 
-<!-- description {{{ -->
+  * get/set
 
-## Description
+  * diff/patch
 
-Crane aims to be for Raku containers what [JSON
-Pointer](http://tools.ietf.org/html/rfc6901) and [JSON
-Patch](http://tools.ietf.org/html/rfc6902) are for JSON.
+  * list the contents of a nested data structure in accessible format
 
-### Features
+METHODS
+=======
 
-- add, remove, replace, move, copy, test operations
-- get/set
-- diff/patch
-- list the contents of a nested data structure in accessible format
+  * .at($container,*@path)>
 
--------------------------------------------------------------------------------
+  * .in($container,*@path)>
 
-<!-- end description }}} -->
+  * .exists($container,:@path!,:$k,:$v)>
 
+  * .get($container,:@path!,:$k,:$v,:$p)>
 
-<!-- methods {{{ -->
+  * .set($container,:@path!,:$value!)>
 
-## Methods
+  * .add($container,:@path!,:$value!,:$in-place)>
 
-<!-- methods toc {{{ -->
+  * .remove($container,:@path!,:$in-place)>
 
-- [`.at($container,*@path)`](#atcontainerpath)
-- [`.in($container,*@path)`](#incontainerpath)
-- [`.exists($container,:@path!,:$k,:$v)`](#existscontainerpathkv)
-- [`.get($container,:@path!,:$k,:$v,:$p)`](#getcontainerpathkvp)
-- [`.set($container,:@path!,:$value!)`](#setcontainerpathvalue)
-- [`.add($container,:@path!,:$value!,:$in-place)`](#addcontainerpathvaluein-place)
-- [`.remove($container,:@path!,:$in-place)`](#removecontainerpathin-place)
-- [`.replace($container,:@path!,:$value!,:$in-place)`](#replacecontainerpathvaluein-place)
-- [`.move($container,:@from!,:@path!,:$in-place)`](#movecontainerfrompathin-place)
-- [`.copy($container,:@from!,:@path!,:$in-place)`](#copycontainerfrompathin-place)
-- [`.test($container,:@path!,:$value!)`](#testcontainerpathvalue)
-- [`.list($container,:@path)`](#listcontainerpath)
-- [`.flatten($container,:@path)`](#flattencontainerpath)
-- [`.transform($container,:@path!,:&with!,:$in-place)`](#transformcontainerpathwithin-place)
-- [`.patch($container,@patch,:$in-place)`](#patchcontainerpatchin-place)
+  * .replace($container,:@path!,:$value!,:$in-place)>
 
-<!-- end methods toc }}} -->
+  * .move($container,:@from!,:@path!,:$in-place)>
 
-<!-- example data structure {{{ -->
+  * .copy($container,:@from!,:@path!,:$in-place)>
+
+  * .test($container,:@path!,:$value!)>
+
+  * .list($container,:@path)>
+
+  * .flatten($container,:@path)>
+
+  * .transform($container,:@path!,:&with!,:$in-place)>
+
+  * .patch($container,@patch,:$in-place)>
 
 All example code assumes `%data` has this structure:
 
@@ -118,24 +108,22 @@ my %data =
     ]);
 ```
 
-<!-- end example data structure }}} -->
-
-<!-- .at($container,*@path) {{{ -->
-
-### `.at($container,*@path)`
+.at($container,*@path)
+----------------------
 
 Navigates to and returns container `is rw`.
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `*@path`: _Path, optional_ - a list of steps for navigating container
+  * `$container`: *Container, required* - the target container
 
-_returns:_
+  * `*@path`: *Path, optional* - a list of steps for navigating container
 
-* Container at path (`is rw`)
+*returns:*
 
-_example:_
+  * Container at path (`is rw`)
+
+*example:*
 
 ```raku
 my %inxi = :info({
@@ -147,23 +135,18 @@ my %inxi = :info({
 Crane.at(%inxi, 'info')<uptime>:delete;
 Crane.at(%inxi, qw<info memory>)[0] = 31868.0;
 
-say %inxi.perl; # :info({ :memory(31868.0, 32140.1), :processes(244) })
+say %inxi.raku; # :info({ :memory(31868.0, 32140.1), :processes(244) })
 ```
 
-<!-- end .at($container,*@path) }}} -->
+.in($container,*@path)
+----------------------
 
-<!-- .in($container,*@path) {{{ -->
-
-### `.in($container,*@path)`
-
-`Crane.in` works like `Crane.at`, except `.in` will create the structure
-of nonexisting containers based on `@path` input instead of aborting
-the operation, e.g.
+`Crane.in` works like `Crane.at`, except `in` will create the structure of nonexisting containers based on `@path` input instead of aborting the operation, e.g.
 
 ```raku
 Crane.at(my %h, qw<a b c>) = 5 # ✗ Crane error: associative key does not exist
 Crane.in(my %i, qw<a b c>) = 5
-say %i.perl;
+say %i.raku;
 {
     :a({
         :b({
@@ -173,15 +156,12 @@ say %i.perl;
 }
 ```
 
-If `@path` contains keys that lead to a nonexisting container, the default
-behavior is to create a Positional container there if the key is an
-`Int >= 0` or a `WhateverCode`. Otherwise `in` creates an Associative
-container there, e.g.
+If `@path` contains keys that lead to a nonexisting container, the default behavior is to create a Positional container there if the key is an `Int `= 0> or a `WhateverCode`. Otherwise `in` creates an Associative container there, e.g.
 
 ```raku
 my %h;
 Crane.in(%h, qw<a b>, 0, *-1) = 'here';
-say %h.perl;
+say %h.raku;
 {
     :a({
         :b([
@@ -191,14 +171,12 @@ say %h.perl;
 }
 ```
 
-If `@path` contains keys that lead to an existing Associative container,
-it will attempt to index the existing Associative container with the
-key regardless of the key's type (be it `Int` or `WhateverCode`), e.g.
+If `@path` contains keys that lead to an existing Associative container, it will attempt to index the existing Associative container with the key regardless of the key's type (be it `Int` or `WhateverCode`), e.g.
 
 ```raku
 my @a = [ :i({:want({:my<MTV>})}) ];
 Crane.in(@a, 0, 'i', 'want', 2) = 'always';
-say @a.perl;
+say @a.raku;
 [
     :i({
         :want({
@@ -210,7 +188,7 @@ say @a.perl;
 
 my @b = [ :i({:want(['my', 'MTV'])}) ];
 Crane.in(@b, 0, 'i', 'want', 2) = 'always';
-say @b.perl;
+say @b.raku;
 [
     :i({
         :want(["my", "MTV", "always"])
@@ -218,134 +196,124 @@ say @b.perl;
 ]
 ```
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `*@path`: _Path, optional_ - a list of steps for navigating container
+  * `$container`>: *Container, required* - the target container
 
-_returns:_
+  * `*@path`>: *Path, optional* - a list of steps for navigating container
 
-* Container at path (`is rw`)
+*returns:*
 
-_example:_
+  * Container at path (`is rw`)
+
+*example:*
 
 ```raku
 my %archversion = :bamboo({ :up<0.0.1>, :aur<0.0.2> });
 Crane.in(%archversion, qw<fzf up>) = '0.11.3';
 Crane.in(%archversion, qw<fzf aur>) = '0.11.3';
-say %archversion.perl;
+say %archversion.raku;
 {
     :bamboo({ :aur<0.0.2>, :up<0.0.1> }),
     :fzf({ :aur<0.11.3>, :up<0.11.3> })
 }
 ```
 
-<!-- end .in($container,*@path) }}} -->
+.exists($container,:@path!,:$k,:$v)
+-----------------------------------
 
-<!-- .exists($container,:@path!,:$k,:$v) {{{ -->
+Determines whether a key exists in the container at the specified path. Works similar to the Raku Hash `:exists` [subscript adverb](https://docs.raku.org/type/Hash#%3Aexists). Pass the `:v` flag to determine whether a defined value is paired to the key at the specified path.
 
-### `.exists($container,:@path!,:$k,:$v)`
+*arguments:*
 
-Determines whether a key exists in the container at the specified
-path. Works similar to the Raku Hash `:exists` [subscript
-adverb](https://docs.raku.org/type/Hash#%3Aexists). Pass the `:v`
-flag to determine whether a defined value is paired to the key at the
-specified path.
+  * `$container`: *Container, required* - the target container
 
-_arguments:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$k`: _Bool, optional, defaults to True_ - indicates whether to
-         check for an existing key at path
-* `:$v`: _Bool, optional_ - indicates whether to check for a defined
-         value at path
+  * `:$k`: *Bool, optional, defaults to True* - indicates whether to check for an existing key at path
 
-_returns:_
+  * `:$v`: *Bool, optional* - indicates whether to check for a defined value at path
 
-* `True` if exists, otherwise `False`
+*returns:*
 
-_What about operating on the root of the container?_
+  * `True` if exists, otherwise `False`
 
-Pass an empty list as `@path` to operate on the root of the container.
-Passing `:v` flag tests `if $container.defined`. Default behavior is to
-raise an error as key operations aren't permitted on root containers.
+*What about operating on the root of the container?*
 
-<!-- end .exists($container,:@path!,:$k,:$v) }}} -->
+Pass an empty list as `@path` to operate on the root of the container. Passing `:v` flag tests if `$container.defined`. Default behavior is to raise an error as key operations aren't permitted on root containers.
 
-<!-- .get($container,:@path!,:$k,:$v,:$p) {{{ -->
+.get($container,:@path!,:$k,:$v,:$p)
+------------------------------------
 
-### `.get($container,:@path!,:$k,:$v,:$p)`
+Gets the value from container at the specified path. The default behavior is to raise an error if path is nonexistent.
 
-Gets the value from container at the specified path. The default
-behavior is to raise an error if path is nonexistent.
+*arguments:*
 
-_arguments:_
+  * `$container`: *Container, required* - the target container
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$k`: _Bool, optional_ - only return the key at path
-* `:$v`: _Bool, optional, defaults to True_ - only return the value
-         at path
-* `:$p`: _Bool, optional_ - return the key-value pair at path
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-_returns:_
+  * `:$k`: *Bool, optional* - only return the key at path
 
-* the dereferenced key, value or key-value pair
+  * `:$v`: *Bool, optional, defaults to True* - only return the value at path
 
-_example:_
+  * `:$p`: *Bool, optional* - return the key-value pair at path
+
+*returns:*
+
+  * the dereferenced key, value or key-value pair
+
+*example:*
 
 ```raku
 my $value = Crane.get(%data, :path('legumes', 1));
-say $value.perl; # { :instock(21), :name("lima beans"), :unit("lbs") }
+say $value.raku; # { :instock(21), :name("lima beans"), :unit("lbs") }
 
 my $value-k = Crane.get(%data, :path('legumes', 1), :k);
-say $value-k.perl; # 1
+say $value-k.raku; # 1
 
 my $value-p = Crane.get(%data, :path('legumes', 1), :p);
-say $value-p.perl; # 1 => { :instock(21), :name("lima beans"), :unit("lbs") }
+say $value-p.raku; # 1 => { :instock(21), :name("lima beans"), :unit("lbs") }
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
-- if `:v` flag passed (the default): `return $container`
-- if `:k` flag passed: raise error "Sorry, not possible to request key
-                       operations on the container root"
-- if `:p` flag passed: raise error "Sorry, not possible to request key
-                       operations on the container root"
+  * if `:v` flag passed (the default): `return $container`
 
-<!-- end .get($container,:@path!,:$k,:$v,:$p) }}} -->
+  * if `:k` flag passed: raise error "Sorry, not possible to request key operations on the container root"
 
-<!-- .set($container,:@path!,:$value!) {{{ -->
+  * if `:p` flag passed: raise error "Sorry, not possible to request key operations on the container root"
 
-### `.set($container,:@path!,:$value!)`
+.set($container,:@path!,:$value!)
+---------------------------------
 
-Sets the value at the specified path in the container. The default
-behavior is to create nonexistent paths (similar to `mkdir -p`).
+Sets the value at the specified path in the container. The default behavior is to create nonexistent paths (similar to `mkdir -p`).
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$value!`: _Any, required_ - the value to be set at the specified path
+  * `$container`: *Container, required* - the target container
 
-_returns:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* Modified container
+  * `:$value!`: *Any, required* - the value to be set at the specified path
 
-_example:_
+*returns:*
+
+  * Modified container
+
+*example:*
 
 ```raku
 my %p;
 Crane.set(%p, :path(qw<peter piper>), :value<man>);
 Crane.set(%p, :path(qw<peter pan>), :value<boy>);
 Crane.set(%p, :path(qw<peter pickle>), :value<dunno>);
-say %p.perl; # { :peter({ :pan("boy"), :pickle("dunno"), :piper("man") }) }
+say %p.raku; # { :peter({ :pan("boy"), :pickle("dunno"), :piper("man") }) }
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
@@ -355,31 +323,20 @@ Crane.set($a, :path(), :value<foo>);
 say $a; # foo
 ```
 
-<!-- end .set($container,:@path!,:$value!) }}} -->
+.add($container,:@path!,:$value!,:$in-place)
+--------------------------------------------
 
-<!-- .add($container,:@path!,:$value!,:$in-place) {{{ -->
+Adds a value to the container. If `:@path` points to an existing item in the container, that item's value is replaced.
 
-### `.add($container,:@path!,:$value!,:$in-place)`
+In the case of a `Positional` type, the value is inserted before the given index. Use the relative accessor (`*-0`) instead of an index (`Int`) for appending to the end of a `Positional`.
 
-Adds a value to the container. If `:@path` points to an existing item
-in the container, that item's value is replaced.
-
-In the case of a `Positional` type, the value is inserted before the
-given index. Use the relative accessor (`*-0`) instead of an index
-(`Int`) for appending to the end of a `Positional`.
-
-Because this operation is designed to add to existing `Associative` types,
-its target location will often not exist. However, an `Associative`
-type or a `Positional` type containing it does need to exist, and it
-remains an error for that not to be the case. For example, a `.add`
-operation with a target location of `<a b>` starting with this Hash:
+Because this operation is designed to add to existing `Associative` types, its target location will often not exist. However, an `Associative` type or a `Positional` type containing it does need to exist, and it remains an error for that not to be the case. For example, a `.add` operation with a target location of `a b` starting with this Hash:
 
 ```raku
 { :a({ :foo(1) }) }
 ```
 
-is not an error, because "a" exists, and "b" will be added to its
-value. It is an error in this Hash:
+is not an error, because "a" exists, and "b" will be added to its value. It is an error in this Hash:
 
 ```raku
 { :q({ :bar(2) }) }
@@ -387,89 +344,77 @@ value. It is an error in this Hash:
 
 because "a" does not exist.
 
-Think of the `.add` operation as behaving similarly to `mkdir`, not
-`mkdir -p`. For example, you cannot do (in shell):
+Think of the `.add` operation as behaving similarly to `mkdir`, not `mkdir -p`. For example, you cannot do (in shell):
 
-```
-$ ls # empty directory
-$ mkdir a/b/c
-mkdir: cannot create directory 'a/b/c': No such file or directory
-```
+    $ ls # empty directory
+    $ mkdir a/b/c
+    mkdir: cannot create directory 'a/b/c': No such file or directory
 
 Without the `-p` flag, you'd have to do:
 
-```
-$ ls # empty directory
-$ mkdir a
-$ mkdir a/b
-$ mkdir a/b/c
-```
+    $ ls # empty directory
+    $ mkdir a
+    $ mkdir a/b
+    $ mkdir a/b/c
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$value!`: _Any, required_ - the value to be added/inserted at the
-              specified path
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `$container`: *Container, required* - the target container
 
-_returns:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+  * `:$value!`: *Any, required* - the value to be added/inserted at the specified path
 
-_example:_
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
+
+*returns:*
+
+  * Container (original container is unmodified unless `:in-place` flag is passed)
+
+*example:*
 
 ```raku
 my %legume = :name<carrots>, :unit<lbs>, :instock(3);
 my %data-new = Crane.add(%data, :path('legumes', 0), :value(%legume));
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
 ```raku
 my @a;
 my @b = Crane.add(@a, :path([]), :value<foo>);
-say @a.perl; # []
-say @b.perl; # ["foo"]
+say @a.raku; # []
+say @b.raku; # ["foo"]
 ```
 
-<!-- end .add($container,:@path!,:$value!,:$in-place) }}} -->
+.remove($container,:@path!,:$in-place)
+--------------------------------------
 
-<!-- .remove($container,:@path!,:$in-place) {{{ -->
+Removes the pair at path from `Associative` types, similar to the Raku Hash [`:delete` subscript adverb](https://docs.raku.org/type/Hash#%3Adelete). Splices elements out from `Positional` types.
 
-### `.remove($container,:@path!,:$in-place)`
+The default behavior is to raise an error if the target location is nonexistent.
 
-Removes the pair at path from `Associative`
-types, similar to the Raku Hash `:delete` [subscript
-adverb](https://docs.raku.org/type/Hash#%3Adelete). Splices elements
-out from `Positional` types.
+*arguments:*
 
-The default behavior is to raise an error if the target location is
-nonexistent.
+  * `$container`: *Container, required* - the target container
 
-_arguments:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
 
-_returns:_
+*returns:*
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+  * Container (original container is unmodified unless `:in-place` flag is passed)
 
-_example:_
+*example:*
 
 ```raku
 my %h = :example<hello>;
 my %h2 = Crane.remove(%h, :path(['example']));
-say %h.perl; # { :example<hello> }
-say %h2.perl; # {}
+say %h.raku; # { :example<hello> }
+say %h2.raku; # {}
 ```
 
 This:
@@ -484,186 +429,160 @@ is equivalent to this:
 Crane.remove(%h, :path(qw<a b>));
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
 ```raku
 my $a = [1, 2, 3];
 my $b = Crane.remove($a, :path([])); # equivalent to `$a = Empty`
-say $a.perl; [1, 2, 3]
+say $a.raku; [1, 2, 3]
 say $b; # (Any)
 ```
 
-<!-- end .remove($container,:@path!,:$in-place) }}} -->
+.replace($container,:@path!,:$value!,:$in-place)
+------------------------------------------------
 
-<!-- .replace($container,:@path!,:$value!,:$in-place) {{{ -->
+Replaces a value. This operation is functionally identical to a `.remove` operation for a value, followed immediately by a `.add` operation at the same location with the replacement value.
 
-### `.replace($container,:@path!,:$value!,:$in-place)`
+The default behavior is to raise an error if the target location is nonexistent.
 
-Replaces a value. This operation is functionally identical to a `.remove`
-operation for a value, followed immediately by a `.add` operation at
-the same location with the replacement value.
+*arguments:*
 
-The default behavior is to raise an error if the target location is
-nonexistent.
+  * `$container`: *Container, required* - the target container
 
-_arguments:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$value!`: _Any, required_ - the value to be set at the specified path
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `:$value!`: *Any, required* - the value to be set at the specified path
 
-_returns:_
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+*returns:*
 
-_example:_
+  * Container (original container is unmodified unless `:in-place` flag is passed)
+
+*example:*
 
 ```raku
 my %legume = :name("green beans"), :unit<lbs>, :instock(3);
 my %data-new = Crane.replace(%data, :path('legumes', 0), :value(%legume));
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
 ```raku
 my %a = :a<aaa>, :b<bbb>, :c<ccc>;
 my %b = Crane.replace(%a, :path([]), :value({ :vm<moar> }));
-say %a.perl; # { :a<aaa>, :b<bbb>, :c<ccc> }
-say %b.perl; # { :vm<moar> }
+say %a.raku; # { :a<aaa>, :b<bbb>, :c<ccc> }
+say %b.raku; # { :vm<moar> }
 ```
 
-<!-- end .replace($container,:@path!,:$value!,:$in-place) }}} -->
+.move($container,:@from!,:@path!,:$in-place)
+--------------------------------------------
 
-<!-- .move($container,:@from!,:@path!,:$in-place) {{{ -->
-
-### `.move($container,:@from!,:@path!,:$in-place)`
-
-Moves the source value identified by `@from` in container to destination
-location specified by `@path`. This operation is functionally identical
-to a `.remove` operation on the `@from` location, followed immediately
-by a `.add` operation at the `@path` location with the value that was
-just removed.
+Moves the source value identified by `@from` in container to destination location specified by `@path`. This operation is functionally identical to a `.remove` operation on the `@from` location, followed immediately by a `.add` operation at the `@path` location with the value that was just removed.
 
 The default behavior is to raise an error if the source is nonexistent.
 
-The default behavior is to raise an error if the `@from` location is a
-proper prefix of the `@path` location; i.e., a location cannot be moved
-into one of its children.
+The default behavior is to raise an error if the `@from` location is a proper prefix of the `@path` location; i.e., a location cannot be moved into one of its children.
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `:@from!`: _Path, required_ - a list of steps to the source
-* `:@path!`: _Path, required_ - a list of steps to the destination
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `$container`: *Container, required* - the target container
 
-_returns:_
+  * `:@from!`: *Path, required* - a list of steps to the source
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+  * `:@path!`: *Path, required* - a list of steps to the destination
 
-_What about operating on the root of the container?_
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
 
-Pass an empty list as `@from` or `@path` to operate on the root of
-the container.
+*returns:*
 
-<!-- end .move($container,:@from!,:@path!,:$in-place) }}} -->
+  * Container (original container is unmodified unless `:in-place` flag is passed)
 
-<!-- .copy($container,:@from!,:@path!,:$in-place) {{{ -->
+*What about operating on the root of the container?*
 
-### `.copy($container,:@from!,:@path!,:$in-place)`
+Pass an empty list as `@from` or `@path` to operate on the root of the container.
 
-Copies the source value identified by `@from` in container to destination
-container at location specified by `@path`. This operation is functionally
-identical to a `.add` operation at the `@path` location using the value
-specified in the `@from`. As with `.move`, a location cannot be copied
-into one of its children.
+.copy($container,:@from!,:@path!,:$in-place)
+--------------------------------------------
 
-The default behavior is to raise an error if the source at `@from`
-is nonexistent.
+Copies the source value identified by `@from` in container to destination container at location specified by `@path`. This operation is functionally identical to a `.add` operation at the `@path` location using the value specified in the `@from`. As with `.move`, a location cannot be copied into one of its children.
 
-_arguments:_
+The default behavior is to raise an error if the source at `@from` is nonexistent.
 
-* `$container`: _Container, required_ - the target container
-* `:@from!`: _Path, required_ - a list of steps to the source
-* `:@path!`: _Path, required_ - a list of steps to the destination
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+*arguments:*
 
-_returns:_
+  * `$container`: *Container, required* - the target container
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+  * `:@from!`: *Path, required* - a list of steps to the source
 
-_example:_
+  * `:@path!`: *Path, required* - a list of steps to the destination
+
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
+
+*returns:*
+
+  * Container (original container is unmodified unless `:in-place` flag is passed)
+
+*example:*
 
 ```raku
 my %h = :example<hello>;
 my %h2 = Crane.copy(%h, :from(['example']), :path(['sample']));
-say %h.perl; # { :example("hello") }
-say %h2.perl; # { :example("hello"), :sample("hello") }
+say %h.raku; # { :example("hello") }
+say %h2.raku; # { :example("hello"), :sample("hello") }
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
-Pass an empty list as `@from` or `@path` to operate on the root of the
-container. Has similar rules / considerations to `.move`.
+Pass an empty list as `@from` or `@path` to operate on the root of the container. Has similar rules / considerations to `.move`.
 
-<!-- end .copy($container,:@from!,:@path!,:$in-place) }}} -->
+.test($container,:@path!,:$value!)
+----------------------------------
 
-<!-- .test($container,:@path!,:$value!) {{{ -->
+Tests that the specified value is set at the target location in the document.
 
-### `.test($container,:@path!,:$value!)`
+*arguments:*
 
-Tests that the specified value is set at the target location in the
-document.
+  * `$container`: *Container, required* - the target container
 
-_arguments:_
+  * `:@path!`: *Path, required* - a list of steps for navigating container
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps for navigating container
-* `:$value!`: _Any, required_ - the value expected at the specified path
+  * `:$value!`: *Any, required* - the value expected at the specified path
 
-_returns:_
+*returns:*
 
-* `True` if expected value exists at `@path`, otherwise `False`
+  * `True` if expected value exists at `@path`, otherwise `False`
 
-_example:_
+*example:*
 
 ```raku
 say so Crane.test(%data, :path('legumes', 0, 'name'), :value("pinto beans")); # True
 ```
 
-_What about operating on the root of the container?_
+*What about operating on the root of the container?*
 
 Pass an empty list as `@path` to operate on the root of the container.
 
-<!-- end .test($container,:@path!,:$value!) }}} -->
-
-<!-- .list($container,:@path) {{{ -->
-
-### `.list($container,:@path)`
+.list($container,:@path)
+------------------------
 
 Lists all of the paths available in `$container`.
 
-_arguments:_
+*arguments:*
 
-* `$container` : _Container, required_ - the target container
-* `:@path`: _Path, optional_ - a list of steps for navigating container
+  * ``$container` ``: *Container, required* - the target container
 
-_returns:_
+  * `:@path`: *Path, optional* - a list of steps for navigating container
 
-* List of path-value pairs
+*returns:*
 
-_example:_
+  * List of path-value pairs
+
+*example:*
 
 Listing a `Hash`:
 
@@ -721,7 +640,7 @@ say Crane.list(%data);
 )
 ```
 
-Listing a List:
+Listing a `List`:
 
 ```raku
 my $a = qw<zero one two>;
@@ -742,24 +661,22 @@ say Crane.list($a);
 )
 ```
 
-<!-- end .list($container,:@path) }}} -->
-
-<!-- .flatten($container,:@path) {{{ -->
-
-### `.flatten($container,:@path)`
+.flatten($container,:@path)
+---------------------------
 
 Flattens a container into a single-level `Hash` of path-value pairs.
 
-_arguments:_
+*arguments:*
 
-* `$container` : _Container, required_ - the target container
-* `:@path`: _Path, optional_ - a list of steps for navigating container
+  * ``$container` ``: *Container, required* - the target container
 
-_returns:_
+  * `:@path`: *Path, optional* - a list of steps for navigating container
 
-* a flattened `Hash` of path-value pairs.
+*returns:*
 
-_example:_
+  * a flattened `Hash` of path-value pairs.
+
+*example:*
 
 ```raku
 say Crane.flatten(%data);
@@ -779,34 +696,28 @@ say Crane.flatten(%data);
 }
 ```
 
-<!-- end .flatten($container,:@path) }}} -->
+.transform($container,:@path!,:&with!,:$in-place)
+-------------------------------------------------
 
-<!-- .transform($container,:@path!,:&with!,:$in-place) {{{ -->
+Functionally identical to a `replace` operation with the replacement value being the return value of `with` applied to the value of `$container` at `@path`.
 
-### `.transform($container,:@path!,:&with!,:$in-place)`
+The Callable passed in `with` must take one (optional) positional argument and return a value.
 
-Functionally identical to a `replace` operation with the replacement value
-being the return value of `with` applied to the value of `$container`
-at `@path`.
+*arguments:*
 
-The Callable passed in `with` must take one (optional) positional argument
-and return a value.
+  * `$container`: *Container, required* - the target container
 
-_arguments:_
+  * `:@path!`: *Path, required* - a list of steps to the destination
 
-* `$container`: _Container, required_ - the target container
-* `:@path!`: _Path, required_ - a list of steps to the destination
-* `:&with!`: _Callable, required_ - instructions for changing the
-             value at `@path`
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `:&with!`: *Callable, required* - instructions for changing the value at `@path`
 
-_returns:_
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+*returns:*
 
-_example:_
+  * Container (original container is unmodified unless `:in-place` flag is passed)
+
+*example:*
 
 ```raku
 my %market =
@@ -827,14 +738,10 @@ Crane.transform(%market, :path(@second-veggie), :with(&oh-yeah), :in-place);
 say so Crane.get(%market, :path(@second-veggie)) eq 'onions!'; # True
 ```
 
-<!-- end .transform($container,:@path!,:&with!,:$in-place) }}} -->
+.patch($container,@patch,:$in-place)
+------------------------------------
 
-<!-- .patch($container,@patch,:$in-place) {{{ -->
-
-### `.patch($container,@patch,:$in-place)`
-
-Apply `@patch`, a list of specially formatted Hashes representing
-individual 6902 operations implemented by Crane, to `$container`.
+Apply `@patch`, a list of specially formatted Hashes representing individual 6902 operations implemented by Crane, to `$container`.
 
 **add**
 
@@ -872,23 +779,21 @@ individual 6902 operations implemented by Crane, to `$container`.
 { :op("test"), :path(qw<path to target>), :value("Is value") }
 ```
 
-If an operation is not successful, the default behavior is to raise an
-exception. If a test operation as part of the `@patch` returns False,
-the default behavior is to raise an exception.
+If an operation is not successful, the default behavior is to raise an exception. If a test operation as part of the `@patch` returns False, the default behavior is to raise an exception.
 
-_arguments:_
+*arguments:*
 
-* `$container`: _Container, required_ - the target container
-* `@patch`: _Patch, required_ - a list of 6902 instructions to apply
-* `:$in-place`: _Bool, optional, defaults to False_ - whether to modify
-                `$container` in-place
+  * `$container`: *Container, required* - the target container
 
-_returns:_
+  * `@patch`: *Patch, required* - a list of 6902 instructions to apply
 
-* Container (original container is unmodified unless `:in-place` flag
-  is passed)
+  * `:$in-place`: *Bool, optional, defaults to False* - whether to modify `$container` in-place
 
-_example:_
+*returns:*
+
+  * Container (original container is unmodified unless `:in-place` flag is passed)
+
+*example:*
 
 ```raku
 my %h;
@@ -916,20 +821,17 @@ my @patch =
 my %i = Crane.patch(%h, @patch); # ✗ Crane error: patch operation failed, test failed
 ```
 
-<!-- end .patch($container,@patch,:$in-place) }}} -->
+AUTHOR
+======
 
--------------------------------------------------------------------------------
+Andy Weidenbaum
 
-<!-- end methods }}} -->
+COPYRIGHT AND LICENSE
+=====================
 
+Copyright 2016 - 2022 Andy Weidenbaum
 
-<!-- licensing {{{ -->
+Copyright 2024 Raku Community
 
-## Licensing
+This is free and unencumbered public domain software. For more information, see http://unlicense.org/ or the accompanying UNLICENSE file.
 
-This is free and unencumbered public domain software. For more
-information, see http://unlicense.org/ or the accompanying UNLICENSE file.
-
-<!-- licensing }}} -->
-
-<!-- vim: ft=markdown fdm=marker fdl=0 -->
